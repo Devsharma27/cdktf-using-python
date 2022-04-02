@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 sudo yum update -y
 sudo yum install python3-pip git mysql -y
