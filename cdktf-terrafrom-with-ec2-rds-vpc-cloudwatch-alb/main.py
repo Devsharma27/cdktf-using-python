@@ -8,7 +8,7 @@ from imports.aws.sns import SnsTopic, SnsTopicSubscription
 from imports.aws.s3 import S3Bucket, S3AccessPointPublicAccessBlockConfiguration
 from imports.aws.elb import Alb, AlbTargetGroup, AlbTargetGroupHealthCheck, AlbTargetGroupAttachment, AlbListenerDefaultAction, AlbListener
 from imports.aws.cloudwatch import CloudwatchMetricAlarm
-from imports.aws.rds import DbInstance, DbSecurityGroupIngress, DbSecurityGroup, DbSubnetGroup
+from imports.aws.rds import DbInstance, DbSubnetGroup
 
 
 class MyStack(TerraformStack):
@@ -129,7 +129,7 @@ class MyStack(TerraformStack):
         from_port= 3306,
         to_port= 3306,
         protocol= "tcp",
-        cidr_blocks = ["0.0.0.0/16"],
+        cidr_blocks = ["10.0.0.0/16"],
         )
 
         db_securitygroup_egress = SecurityGroupEgress(
@@ -156,14 +156,16 @@ class MyStack(TerraformStack):
 
         dbinstance = DbInstance(self, "dbinstance",
         depends_on= [dbsubnet],
+        identifier = "aws-d-database-1",
         db_subnet_group_name = dbsubnet.id,
         allocated_storage    = 10,
         engine               = "mysql",
-        engine_version       = "8.0.27",
+        engine_version       = "8.0.23",
         instance_class       = "db.t2.micro",
         name                 = "mydb",
         username             = "dev",
         password             = "12345678",
+        deletion_protection= False,
         # skip_final_snapshot = False,
         publicly_accessible = False,
         vpc_security_group_ids= [db_securitygroup.id],
@@ -209,10 +211,11 @@ class MyStack(TerraformStack):
         instance_type= "t2.micro",
         iam_instance_profile= "ec2role",
         vpc_security_group_ids = [ec2_securitygroup.id],
-        subnet_id= public1.id,
+        subnet_id= private1.id,
         tags={"Name": "ec2-instance"},
-        user_data = '''#!/usr/bin/env bash\nsudo -i\nyum update -y\nyum install python3-pip git mysql -y\nrpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm\nsudo aws s3 cp s3://cloudwatchogs/config.json /opt/aws/amazon-cloudwatch-agent/config.json\nsudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/config.json\nsudo /bin/systemctl restart amazon-cloudwatch-agent.service\nsudo git clone "https://github.com/Devsharma27/flaskapp.git"\nsudo pip3 install flask\nsudo yum -y install python python3-devel mysql-devel redhat-rpm-config gcc\nsudo pip3 install flask_mysqldb\nsudo pip3 install mysql-connector-python\ncd flaskapp\npython3 app.py\n'''
+        # user_data = '''#!/usr/bin/env bash\nsudo -i\nyum update -y\nyum install python3-pip git mysql -y\nrpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm\nsudo aws s3 cp s3://cloudwatchogs/config.json /opt/aws/amazon-cloudwatch-agent/config.json\nsudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/config.json\nsudo /bin/systemctl restart amazon-cloudwatch-agent.service\nsudo git clone "https://github.com/Devsharma27/flaskapp.git"\nsudo pip3 install flask\nsudo yum -y install python python3-devel mysql-devel redhat-rpm-config gcc\nsudo pip3 install flask_mysqldb\nsudo pip3 install mysql-connector-python\ncd flaskapp\npython3 app.py\n'''
         # user_data='''#!/usr/bin/env bash\nsudo -i\nyum update -y\nyum install httpd.x86_64 -y\nsystemctl start httpd.service\nsystemctl start httpd.service'''
+        user_data = '''#!/usr/bin/env bash\nsudo -i\nyum update -y\nyum install python3-pip git mysql -y\nrpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm\nsudo aws s3 cp s3://cloudwatchogs/config.json /opt/aws/amazon-cloudwatch-agent/config.json\nsudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/config.json\nsudo /bin/systemctl restart amazon-cloudwatch-agent.service\nsudo git clone "https://github.com/Devsharma27/oneflask.git"\nsudo pip3 install flask\nsudo yum -y install python python3-devel mysql-devel redhat-rpm-config gcc\nsudo pip3 install flask_mysqldb\nsudo pip3 install mysql-connector-python\ncd oneflask\npython3 app.py\n'''
         )
 # EBS
         ebsvolume = EbsVolume(self, "ebsvolume",
@@ -233,6 +236,7 @@ class MyStack(TerraformStack):
 # TargetGroup
 
         ec2targetgroup = AlbTargetGroup(self,"ec2targetgroup",
+        name= "ec2targetgroup",
         depends_on= [ec2_instance],
         vpc_id = myvpc.id,
         port = 80,
