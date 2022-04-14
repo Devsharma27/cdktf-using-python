@@ -486,16 +486,15 @@ class MyStack(TerraformStack):
         kms_master_key_id = kmskey.id,
         )
         encryptionrule = S3BucketServerSideEncryptionConfigurationRule(
-                apply_server_side_encryption_by_default = [encryption],
+                apply_server_side_encryption_by_default = encryption,
+        )
+        s3rule = S3BucketServerSideEncryptionConfiguration(
+                rule = encryptionrule,
         )
         bucket = S3Bucket(self, "MyFirstBucket",
         acl = "private",
-        server_side_encryption_configuration = [rule], 
-        )
-        rule = S3BucketServerSideEncryptionConfiguration(
-                rule = [encryptionrule]
-        )
-        
+        server_side_encryption_configuration = s3rule, 
+        )        
 
         
 
@@ -505,3 +504,4 @@ app = App()
 stack = MyStack(app, "python-vpc")
 
 app.synth()
+s
