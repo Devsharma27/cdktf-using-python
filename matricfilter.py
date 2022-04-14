@@ -3,15 +3,16 @@ from html.entities import name2codepoint
 from constructs import Construct
 from cdktf import App, TerraformStack
 from imports.aws import AwsProvider
-from imports.aws import kms
+from imports.aws.kms import KmsAlias, KmsKey
 from imports.aws.vpc import Route, RouteTable,RouteTableAssociation, Vpc, Subnet, InternetGateway, NatGateway, SecurityGroup, SecurityGroupIngress, SecurityGroupEgress
 from imports.aws.ec2 import Instance, Eip, EbsVolume, VolumeAttachment
 from imports.aws.sns import SnsTopic, SnsTopicSubscription
-from imports.aws.s3 import S3Bucket
+from imports.aws.s3 import S3Bucket, S3BucketServerSideEncryptionConfiguration, S3BucketServerSideEncryptionConfigurationRule,S3BucketServerSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefault
 from imports.aws.elb import Alb, AlbTargetGroup, AlbTargetGroupHealthCheck, AlbTargetGroupAttachment, AlbListenerDefaultAction, AlbListener
 from imports.aws.cloudwatch import CloudwatchMetricAlarm, CloudwatchLogMetricFilter,CloudwatchLogMetricFilterMetricTransformation
 from imports.aws.rds import DbInstance, DbSubnetGroup, RdsClusterInstanceTimeouts
 from imports.aws.secretsmanager import SecretsmanagerSecret
+
 
 
 class MyStack(TerraformStack):
@@ -20,10 +21,9 @@ class MyStack(TerraformStack):
 
         AwsProvider(self, "AWS", region="us-east-1")
 
-        
-        secretstoreDB = SecretsmanagerSecret(self, "secretstoreDB",
-        name = "rdsdatabase",
-        )
+        # secretstoreDB = SecretsmanagerSecret(self, "secretstoreDB",
+        # name = "rdsdatabase",
+        # )
 
 # Vpc
         myvpc = Vpc(self, "myvpc",
@@ -396,10 +396,110 @@ class MyStack(TerraformStack):
         comparison_operator = "GreaterThanOrEqualToThreshold",
         )
 
-#S3Bucket
- 
-        bucket = S3Bucket(self, "MyFirstBucket")
+        kmskey = KmsKey(self, "kmskey",
+        customer_master_key_spec = "SYMMETRIC_DEFAULT",)
+        # policy = 
 
+        #         {
+        #             "Id": "key-consolepolicy-3",
+        #             "Version": "2012-10-17",
+        #             "Statement": [
+        #         {
+        #                     "Sid": "Enable IAM User Permissions",
+        #                     "Effect": "Allow",
+        #                     "Principal": {
+        #                         "AWS": "arn:aws:iam::128680359488:root"
+        #                     },
+        #                     "Action": "kms:*",
+        #                     "Resource": "*"
+        #                 },
+        #                 {
+        #                     "Sid": "Allow access for Key Administrators",
+        #                     "Effect": "Allow",
+        #                     "Principal": {
+        #                         "AWS": "arn:aws:iam::128680359488:user/dev"
+        #                     },
+        #                     "Action": [
+        #                         "kms:Create*",
+        #                         "kms:Describe*",
+        #                         "kms:Enable*",
+        #                         "kms:List*",
+        #                         "kms:Put*",
+        #                         "kms:Update*",
+        #                         "kms:Revoke*",
+        #                         "kms:Disable*",
+        #                         "kms:Get*",
+        #                         "kms:Delete*",
+        #                         "kms:TagResource",
+        #                         "kms:UntagResource",
+        #                         "kms:ScheduleKeyDeletion",
+        #                         "kms:CancelKeyDeletion"
+        #                     ],
+        #                     "Resource": "*"
+        #                 },
+        #                 {
+        #                     "Sid": "Allow use of the key",
+        #                     "Effect": "Allow",
+        #                     "Principal": {
+        #                         "AWS": "arn:aws:iam::128680359488:user/dev"
+        #                     },
+        #                     "Action": [
+        #                         "kms:Encrypt",
+        #                         "kms:Decrypt",
+        #                         "kms:ReEncrypt*",
+        #                         "kms:GenerateDataKey*",
+        #                         "kms:DescribeKey"
+        #                     ],
+        #                     "Resource": "*"
+        #                 },
+        #                 {
+        #                     "Sid": "Allow attachment of persistent resources",
+        #                     "Effect": "Allow",
+        #                     "Principal": {
+        #                         "AWS": "arn:aws:iam::128680359488:user/dev"
+        #                     },
+        #                     "Action": [
+        #                         "kms:CreateGrant",
+        #                         "kms:ListGrants",
+        #                         "kms:RevokeGrant"
+        #                     ],
+        #                     "Resource": "*",
+        #                     "Condition": {
+        #                         "Bool": {
+        #                             "kms:GrantIsForAWSResource": "true"
+        #                         }
+        #                     }
+        #                 }
+        #             ]
+        #         }
+        # )
+
+        alias = KmsAlias(self, "alias",
+        name = "alias/my-key-alias",
+        target_key_id = kmskey.id,
+        )
+
+#S3Bucket
+        
+        encryption = S3BucketServerSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefault(
+        sse_algorithm = "aws:kms",
+        kms_master_key_id = kmskey.id,
+        )
+        encryptionrule = S3BucketServerSideEncryptionConfigurationRule(
+                apply_server_side_encryption_by_default = [encryption],
+        )
+        bucket = S3Bucket(self, "MyFirstBucket",
+        acl = "private",
+        server_side_encryption_configuration = [rule], 
+        )
+        rule = S3BucketServerSideEncryptionConfiguration(
+                rule = [encryptionrule]
+        )
+        
+
+        
+
+        
 
 app = App()
 stack = MyStack(app, "python-vpc")
