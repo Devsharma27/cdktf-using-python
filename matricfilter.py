@@ -504,4 +504,3 @@ app = App()
 stack = MyStack(app, "python-vpc")
 
 app.synth()
-s
